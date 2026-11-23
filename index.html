@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="description" content="VIDABREY: consulta precios, administra inventario y registra compras y ventas de tu tienda." />
+
+  <title>VIDABREY | Gestión de tienda</title>
+
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand-row">
+      <a class="brand-lockup" href="#inicio" aria-label="VIDABREY, inicio">
+        <svg class="brand-logo" viewBox="0 0 680 120" role="img" aria-label="VIDABREY">
+          <defs>
+            <linearGradient id="logo-leaf" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0%" stop-color="#087f70" />
+              <stop offset="100%" stop-color="#58b99a" />
+            </linearGradient>
+            <linearGradient id="logo-sun" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0%" stop-color="#e9a83a" />
+              <stop offset="100%" stop-color="#f7d786" />
+            </linearGradient>
+          </defs>
+
+          <g transform="translate(5 6)">
+            <circle cx="52" cy="49" r="32" fill="url(#logo-sun)" />
+            <path d="M15 92c11-34 34-52 68-59-5 34-25 54-68 59Z" fill="url(#logo-leaf)" />
+            <path d="M25 83 70 47" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+            <path d="M10 105h83" fill="none" stroke="#17322e" stroke-width="5" stroke-linecap="round" />
+          </g>
+
+          <text
+            x="120"
+            y="78"
+            fill="#17322e"
+            font-family="Arial, Helvetica, sans-serif"
+            font-size="62"
+            font-weight="800"
+            letter-spacing="1.5"
+          >VIDABREY</text>
+        </svg>
+
+        <span class="brand-caption">Gestión de tienda</span>
+      </a>
+
+      <div class="quick-actions">
+        <button type="button" id="btn-abrir-producto" class="btn btn-secondary">
+          + Nuevo Producto
+        </button>
+        <button type="button" id="btn-abrir-venta" class="btn btn-accent">
+          Registrar Venta
+        </button>
+      </div>
+    </div>
+
+    <nav class="nav-tabs" aria-label="Vistas principales">
+      <button type="button" class="tab-btn active" data-tab="precios">Precios</button>
+      <button type="button" class="tab-btn" data-tab="compras">Día de Compras</button>
+      <button type="button" class="tab-btn" data-tab="ganancias">Ganancias</button>
+    </nav>
+  </header>
+
+  <main id="inicio" class="container">
+    <div class="search-bar">
+      <label class="sr-only" for="buscador">
+        Buscar producto por nombre o código
+      </label>
+      <input
+        type="search"
+        id="buscador"
+        placeholder="Buscar producto por nombre o código..."
+        autocomplete="off"
+      />
+    </div>
+
+    <div id="estado-mensaje" class="status-banner" role="status" aria-live="polite"></div>
+
+    <section id="vista-precios" class="view-section active" aria-labelledby="titulo-precios">
+      <div class="section-header">
+        <span class="section-eyebrow">INVENTARIO</span>
+        <h1 id="titulo-precios">Precios de venta y stock</h1>
+        <p class="section-subtitle">
+          Consulta rápida de precios por mayor y menor.
+        </p>
+      </div>
+      <div id="lista-precios" class="cards-grid"></div>
+    </section>
+
+    <section id="vista-compras" class="view-section" aria-labelledby="titulo-compras">
+      <div class="section-header">
+        <span class="section-eyebrow">ABASTECIMIENTO</span>
+        <h2 id="titulo-compras">Día de compras</h2>
+        <p class="section-subtitle">
+          Compara costos y precios anteriores antes de reponer tus productos.
+        </p>
+      </div>
+      <div id="lista-compras" class="cards-grid"></div>
+    </section>
+
+    <section id="vista-ganancias" class="view-section" aria-labelledby="titulo-ganancias">
+      <div class="section-header">
+        <span class="section-eyebrow">RESUMEN DEL NEGOCIO</span>
+        <h2 id="titulo-ganancias">Ganancias</h2>
+        <p class="section-subtitle">
+          Revisa las ganancias fijas por producto y el acumulado de tus ventas.
+        </p>
+      </div>
+      <div id="resumen-ganancias" class="summary-strip"></div>
+      <div id="lista-ganancias" class="cards-grid"></div>
+    </section>
+  </main>
+
+  <div id="modal-producto" class="modal-backdrop" hidden>
+    <section
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-modal-producto"
+    >
+      <div class="modal-header">
+        <h2 id="titulo-modal-producto">Nuevo producto</h2>
+        <button
+          type="button"
+          class="btn-close"
+          data-close="modal-producto"
+          aria-label="Cerrar"
+        >&times;</button>
+      </div>
+
+      <form id="form-producto" class="form-grid">
+        <div class="field">
+          <label for="prod-codigo">Código</label>
+          <input type="text" id="prod-codigo" autocomplete="off" required />
+        </div>
+
+        <div class="field">
+          <label for="prod-nombre">Nombre</label>
+          <input type="text" id="prod-nombre" required />
+        </div>
+
+        <div class="field">
+          <label for="prod-unidad-mayor">Unidad mayor (ej. saco, caja)</label>
+          <input type="text" id="prod-unidad-mayor" required />
+        </div>
+
+        <div class="field">
+          <label for="prod-unidad-menor">Unidad menor (ej. kg, unidad)</label>
+          <input type="text" id="prod-unidad-menor" required />
+        </div>
+
+        <div class="field">
+          <label for="prod-equivalencia">Equivalencia (unidades menores por mayor)</label>
+          <input type="number" step="any" min="0.0001" id="prod-equivalencia" required />
+        </div>
+
+        <div class="field">
+          <label for="prod-costo">Costo de compra actual (unidad mayor)</label>
+          <input type="number" step="any" min="0" id="prod-costo" required />
+        </div>
+
+        <div class="field">
+          <label for="prod-gan-mayor">Ganancia fija por mayor</label>
+          <input type="number" step="any" id="prod-gan-mayor" required />
+        </div>
+
+        <div class="field">
+          <label for="prod-gan-menor">Ganancia fija por unidad menor</label>
+          <input type="number" step="any" id="prod-gan-menor" required />
+        </div>
+
+        <div class="field full-span">
+          <label for="prod-stock">Stock inicial (unidades mayores)</label>
+          <input type="number" step="any" min="0" id="prod-stock" required />
+        </div>
+
+        <div class="modal-actions full-span">
+          <button type="button" class="btn btn-ghost" data-close="modal-producto">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">Guardar producto</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="modal-compra" class="modal-backdrop" hidden>
+    <section
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="compra-titulo"
+    >
+      <div class="modal-header">
+        <h2 id="compra-titulo">Registrar compra</h2>
+        <button
+          type="button"
+          class="btn-close"
+          data-close="modal-compra"
+          aria-label="Cerrar"
+        >&times;</button>
+      </div>
+
+      <div id="compra-comparativa" class="compare-box"></div>
+
+      <form id="form-compra" class="form-grid">
+        <input type="hidden" id="compra-producto-id" />
+
+        <div class="field">
+          <label for="compra-fecha">Fecha de compra</label>
+          <input type="date" id="compra-fecha" required />
+        </div>
+
+        <div class="field">
+          <label for="compra-cantidad">Cantidad comprada (unidades mayores)</label>
+          <input type="number" step="any" min="0.0001" id="compra-cantidad" required />
+        </div>
+
+        <div class="field full-span">
+          <label for="compra-costo">Nuevo costo por unidad mayor</label>
+          <input type="number" step="any" min="0" id="compra-costo" required />
+        </div>
+
+        <div id="compra-preview" class="preview-box full-span"></div>
+
+        <div class="modal-actions full-span">
+          <button type="button" class="btn btn-ghost" data-close="modal-compra">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Guardar compra y actualizar
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="modal-venta" class="modal-backdrop" hidden>
+    <section
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-modal-venta"
+    >
+      <div class="modal-header">
+        <h2 id="titulo-modal-venta">Registrar venta</h2>
+        <button
+          type="button"
+          class="btn-close"
+          data-close="modal-venta"
+          aria-label="Cerrar"
+        >&times;</button>
+      </div>
+
+      <form id="form-venta" class="form-grid">
+        <div class="field full-span">
+          <label for="venta-producto">Producto</label>
+          <select id="venta-producto" required></select>
+        </div>
+
+        <div class="field">
+          <label for="venta-fecha">Fecha de venta</label>
+          <input type="date" id="venta-fecha" required />
+        </div>
+
+        <div class="field">
+          <label for="venta-tipo">Tipo de venta</label>
+          <select id="venta-tipo" required>
+            <option value="MAYOR">Por mayor</option>
+            <option value="MENOR">Por menor</option>
+          </select>
+        </div>
+
+        <div class="field full-span">
+          <label for="venta-cantidad">Cantidad vendida</label>
+          <input type="number" step="any" min="0.0001" id="venta-cantidad" required />
+        </div>
+
+        <div id="venta-resumen" class="preview-box full-span"></div>
+
+        <div class="modal-actions full-span">
+          <button type="button" class="btn btn-ghost" data-close="modal-venta">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">Confirmar venta</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="modal-ganancia" class="modal-backdrop" hidden>
+    <section
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ganancia-titulo"
+    >
+      <div class="modal-header">
+        <h2 id="ganancia-titulo">Editar ganancia fija</h2>
+        <button
+          type="button"
+          class="btn-close"
+          data-close="modal-ganancia"
+          aria-label="Cerrar"
+        >&times;</button>
+      </div>
+
+      <form id="form-ganancia" class="form-grid">
+        <input type="hidden" id="ganancia-producto-id" />
+
+        <div class="field">
+          <label for="ganancia-mayor-input">Ganancia fija por mayor</label>
+          <input type="number" step="any" id="ganancia-mayor-input" required />
+        </div>
+
+        <div class="field">
+          <label for="ganancia-menor-input">Ganancia fija por menor</label>
+          <input type="number" step="any" id="ganancia-menor-input" required />
+        </div>
+
+        <div class="modal-actions full-span">
+          <button type="button" class="btn btn-ghost" data-close="modal-ganancia">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">Guardar ganancias</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
